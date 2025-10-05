@@ -1,0 +1,117 @@
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include "DHT.h"
+#include <Wire.h>
+#include <Adafruit_BMP280.h>
+#include <MPU6050.h>
+
+#define DHTPIN1 2
+#define DHTPIN2 3
+#define DHTTYPE DHT11
+DHT dht1(DHTPIN1, DHTTYPE);
+DHT dht2(DHTPIN2, DHTTYPE);
+
+Adafruit_BMP280 bmp;    
+MPU6050 mpu;              
+
+RF24 radio(9, 10);  
+const byte address[6] = "00001";
+char message[32];
+
+#define RED_LED 5
+#define GREEN_LED 6
+
+unsigned long previousMillis = 0;
+enum LEDState {RED_ON, PAUSE_AFTER_RED, GREEN_ON, PAUSE_AFTER_GREEN};
+LEDState ledState = RED_ON;
+
+void setup() {
+  Serial.begin(9600);
+
+  dht1.begin();
+  dht2.begin();
+
+  if (!bmp.begin(0x76)) {
+    Serial.println("BMP280 not found!");
+  }
+
+  Wire.begin();
+  mpu.initialize();
+
+  radio.begin();
+  radio.setPALevel(RF24_PA_HIGH);
+  radio.setDataRate(RF24_250KBPS);
+  radio.openWritingPipe(address);
+  radio.stopListening();
+
+  pinMode(RED_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+
+  switch(ledState){
+    case RED_ON:
+      digitalWrite(RED_LED, HIGH);
+      digitalWrite(GREEN_LED, LOW);
+      previousMillis = currentMillis;
+      ledState = PAUSE_AFTER_RED;
+      break;
+
+    case PAUSE_AFTER_RED:
+      if(currentMillis - previousMillis >= 100){ 
+        digitalWrite(RED_LED, LOW);
+        previousMillis = currentMillis;
+        ledState = GREEN_ON; 
+      }
+      break;
+
+    case GREEN_ON:
+      if(currentMillis - previousMillis >= 1500){ 
+        digitalWrite(GREEN_LED, HIGH);
+        previousMillis = currentMillis;
+        ledState = PAUSE_AFTER_GREEN;
+      }
+      break;
+
+    case PAUSE_AFTER_GREEN:
+      if(currentMillis - previousMillis >= 100){
+        digitalWrite(GREEN_LED, LOW);
+        previousMillis = currentMillis;
+        ledState = RED_ON; 
+      }
+      break;
+  }
+  float t1 = dht1.readTemperature();
+  float h1 = dht1.readHumidity();
+  float t2 = dht2.readTemperature();
+  float h2 = dht2.readHumidity();
+  float pressure = bmp.readPressure() / 100.0F;
+  int mq135Value = analogRead(A0);
+
+  int16_t ax, ay, az, gx, gy, gz;
+  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+  if (isnan(t1) || isnan(h1) || isnan(t2) || isnan(h2)) {
+    Serial.println("Failed to read from DHT!");
+    delay(1000);
+    return;
+  }
+
+  snprintf(message, sizeof(message), "%d,%d,%d,%d,%d,%d,%d,%d,%d",
+           (int)t1, (int)h1, (int)t2, (int)h2,
+           (int)pressure, mq135Value,
+           gx, gy, gz);
+
+  bool success = radio.write(message, strlen(message)+1);
+  if (success) {
+    Serial.print("Sent: ");
+    Serial.println(message);
+  } else {
+    Serial.println("Send failed");
+  }
+
+  delay(2000); 
+}

@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="mk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Пренеос на податоци во живо</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#94a3b8;
+      --accent:#60a5fa;
+      --ok:#10b981;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+      --glass: rgba(255,255,255,0.03);
+      --glass-2: rgba(255,255,255,0.02);
+      --glass-border: rgba(255,255,255,0.04);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: linear-gradient(180deg,var(--bg) 0%, #071023 100%);
+      color:#e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:28px;
+    }
+
+    .container{
+      max-width:1100px;
+      margin:0 auto;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:18px;
+    }
+    .title{
+      display:flex;
+      gap:14px;
+      align-items:center;
+    }
+    .logo {
+      width:52px;height:52px;border-radius:10px;
+      display:grid;place-items:center;
+      background:linear-gradient(135deg,var(--accent),#3b82f6);
+      box-shadow: 0 6px 20px rgba(2,6,23,0.6);
+      font-weight:700;font-size:18px;
+    }
+    h1{margin:0;font-size:20px}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .grid {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:14px;
+      margin-top:18px;
+    }
+
+    @media (max-width:900px){ .grid{grid-template-columns:repeat(2,1fr);} }
+    @media (max-width:600px){ .grid{grid-template-columns:1fr;} .title h1{font-size:18px} }
+
+    .card{
+      background: linear-gradient(180deg,var(--card), var(--glass));
+      border:1px solid var(--glass-border);
+      border-radius:12px;
+      padding:14px;
+      box-shadow: 0 6px 18px rgba(2,6,23,0.45);
+      min-height:110px;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .card h3{margin:0;font-size:13px;color:var(--muted)}
+    .value{
+      margin-top:10px;
+      font-size:28px;
+      font-weight:700;
+      letter-spacing:0.3px;
+    }
+    .small{font-size:13px;color:var(--muted);margin-top:8px}
+
+    .row{
+      display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    }
+
+    .status-dot{
+      width:12px;height:12px;border-radius:50%;
+      display:inline-block;margin-right:8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+
+    footer.info{
+      margin-top:18px;
+      display:flex;justify-content:space-between;align-items:center;color:var(--muted);
+      font-size:13px;
+    }
+
+
+    .big{
+      grid-column: span 2;
+      display:flex;
+      gap:14px;
+      align-items:center;
+    }
+    @media (max-width:900px){ .big{grid-column: span 1;} }
+
+
+    .fade{
+      transition:all 300ms ease;
+      transform-origin:center left;
+    }
+    .pulse{
+      animation: pulse 1.6s infinite;
+    }
+    @keyframes pulse{
+      0%{transform:scale(1);opacity:1}
+      50%{transform:scale(1.02);opacity:0.95}
+      100%{transform:scale(1);opacity:1}
+    }
+
+   
+    .badge{
+      display:inline-block;padding:6px 10px;border-radius:999px;background:var(--glass-2);color:var(--muted);
+      font-weight:600;font-size:12px;border:1px solid rgba(255,255,255,0.02)
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">
+        <div class="logo">MK</div>
+        <div>
+          <h1>Maklinkorbital податоци од мерење</h1>
+          <p class="lead">Последни податоци од уредот (освежување автоматски)</p>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="badge" id="status">Чекање...</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px" id="tsSmall"></div>
+      </div>
+    </header>
+
+    <main>
+      <div class="grid">
+        <div class="card big">
+          <div style="flex:1">
+            <h3>Температура 1</h3>
+            <div class="value fade" id="t1">-- °C</div>
+            <div class="small">Влажност 1: <span id="h1">-- %</span></div>
+          </div>
+          <div style="flex:1">
+            <h3>Температура 2</h3>
+            <div class="value fade" id="t2">-- °C</div>
+            <div class="small">Влажност 2: <span id="h2">-- %</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Притисок</h3>
+          <div class="value" id="pressure">-- hPa</div>
+          <div class="small">Сензор за притисок</div>
+        </div>
+
+        <div class="card">
+          <h3>Квалитет на воздух (MQ135)</h3>
+          <div class="row" style="margin-top:8px;align-items:center">
+            <span class="status-dot" id="mqDot" style="background:var(--muted)"></span>
+            <div>
+              <div class="value" id="mq">--</div>
+              <div class="small">Повисока вредност = полош воздух</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Гиро / Акселерометар (gx, gy, gz)</h3>
+          <div style="margin-top:10px" class="small">
+            X: <span id="gx">--</span>&nbsp;&nbsp;
+            Y: <span id="gy">--</span>&nbsp;&nbsp;
+            Z: <span id="gz">--</span>
+          </div>
+          <div style="margin-top:10px" class="small">Гиро вредност</div>
+        </div>
+
+        <div class="card">
+          <h3>Суров ред</h3>
+          <div style="margin-top:10px" class="small" id="raw">-</div>
+        </div>
+      </div>
+
+      <footer class="info">
+        <div>Освежување: <span id="pollInt">5s</span></div>
+        <div id="lastUpdate">Последно читање: --</div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const DATA_PATH = 'data.json';     
+    const POLL_INTERVAL_MS = 5000;      
+    document.getElementById('pollInt').textContent = (POLL_INTERVAL_MS/1000) + 's';
+
+    function safeText(v){ return (v===undefined || v===null) ? '--' : v; }
+
+    async function fetchAndUpdate(){
+      try{
+        const resp = await fetch(DATA_PATH + '?_=' + Date.now(), {cache: 'no-store'});
+        if(!resp.ok) throw new Error('File not found or server error');
+        const data = await resp.json();
+
+        
+        const t1 = safeText(data.temperature1);
+        const h1 = safeText(data.humidity1);
+        const t2 = safeText(data.temperature2);
+        const h2 = safeText(data.humidity2);
+        const pressure = safeText(data.pressure);
+        const mq = safeText(data.airQuality ?? data.mq135 ?? data.mq);
+        const gx = safeText(data.gx);
+        const gy = safeText(data.gy);
+        const gz = safeText(data.gz);
+        const ts = safeText(data.timestamp ?? new Date().toLocaleString());
+
+     
+        document.getElementById('t1').textContent = t1 + ' °C';
+        document.getElementById('h1').textContent = h1 + ' %';
+        document.getElementById('t2').textContent = t2 + ' °C';
+        document.getElementById('h2').textContent = h2 + ' %';
+        document.getElementById('pressure').textContent = pressure + ' hPa';
+        document.getElementById('mq').textContent = mq;
+        document.getElementById('gx').textContent = gx;
+        document.getElementById('gy').textContent = gy;
+        document.getElementById('gz').textContent = gz;
+        document.getElementById('raw').textContent = JSON.stringify(data);
+
+        document.getElementById('lastUpdate').textContent = 'Последно читање: ' + ts;
+        document.getElementById('tsSmall').textContent = 'Последен запис: ' + ts;
+        document.getElementById('status').textContent = 'OK';
+
+       
+        const dot = document.getElementById('mqDot');
+        const mqVal = parseFloat(mq);
+        if (!isNaN(mqVal)) {
+          if (mqVal < 100) { dot.style.background = 'var(--ok)'; document.getElementById('status').classList.remove('pulse'); }
+          else if (mqVal < 300) { dot.style.background = 'var(--warn)'; document.getElementById('status').classList.add('pulse'); }
+          else { dot.style.background = 'var(--danger)'; document.getElementById('status').classList.add('pulse'); }
+        } else {
+          dot.style.background = 'var(--muted)';
+        }
+
+      
+        const els = document.querySelectorAll('.fade');
+        els.forEach(el => { el.style.transform = 'translateX(-6px)'; el.style.opacity = '0.6';
+          setTimeout(()=>{ el.style.transform='translateX(0)'; el.style.opacity='1'; }, 200);
+        });
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById('status').textContent = 'No data';
+        document.getElementById('tsSmall').textContent = '';
+      }
+    }
+
+  
+    fetchAndUpdate();
+    setInterval(fetchAndUpdate, POLL_INTERVAL_MS);
+  </script>
+</body>
+</html>

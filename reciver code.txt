@@ -1,0 +1,101 @@
+using System;
+using System.IO;
+using System.IO.Ports;
+using System.Threading;
+using Newtonsoft.Json;
+
+namespace SensorReader
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("=== Chitanje podatoci od satelit ===");
+            Console.Write("Vnesi COM porta (pr. COM5): ");
+            string portName = Console.ReadLine();
+
+            SerialPort port = new SerialPort(portName, 9600);
+            port.ReadTimeout = 3000;
+
+            string jsonFile = @"C:\xampp\htdocs\maklinkorbital\data.json";
+
+            try
+            {
+                port.Open();
+                Console.WriteLine($"Slushanje na {portName}...");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Greshka: " + ex.Message);
+                return;
+            }
+
+            DateTime lastSave = DateTime.Now.AddMinutes(-5); 
+            string lastLine = "";
+
+            while (true)
+            {
+                
+                try
+                {
+                    if (port.BytesToRead > 0)
+                    {
+                        string line = port.ReadLine().Trim();
+                        if (line.Length > 0)
+                        {
+                            lastLine = line; 
+                        }
+                    }
+                }
+                catch (TimeoutException)
+                {
+                   
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Greshka: " + ex.Message);
+                }
+
+                
+                if ((DateTime.Now - lastSave).TotalMinutes >= 5)
+                {
+                    if (!string.IsNullOrEmpty(lastLine))
+                    {
+                        string[] parts = lastLine.Split(',');
+                        if (parts.Length >= 9)
+                        {
+                            var entry = new
+                            {
+                                temperature1 = parts[0],
+                                humidity1 = parts[1],
+                                temperature2 = parts[2],
+                                humidity2 = parts[3],
+                                pressure = parts[4],
+                                airQuality = parts[5],
+                                gx = parts[6],
+                                gy = parts[7],
+                                gz = parts[8],
+                                timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                            };
+
+                            string jsonData = JsonConvert.SerializeObject(entry, Formatting.Indented);
+                            File.WriteAllText(jsonFile, jsonData);
+                            Console.WriteLine($"Posledni podatoci snimeni na {jsonFile} vo {DateTime.Now}");
+                            lastSave = DateTime.Now;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Nevalidni podatoci za JSON: " + lastLine);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Nema podatoci za snimanje.");
+                    }
+                }
+
+                Thread.Sleep(500); 
+            }
+        }
+    }
+}
